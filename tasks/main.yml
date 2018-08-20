@@ -1,7 +1,7 @@
 ---
 # tasks file for natefoo.postgresql-objects
 
-- name: Revoke extra privileges
+- name: "Revoke extra privileges"
   postgresql_privs:
     database: "{{ item.database }}"
     roles: "{{ item.roles }}"
@@ -21,7 +21,7 @@
   when: item.state is defined and item.state == 'absent'
 
 # Drop databases first so later user drop can succeed
-- name: Drop databases
+- name: "Drop databases"
   postgresql_db:
     name: "{{ item.name }}"
     owner: "{{ item.owner | default(omit) }}"
@@ -37,7 +37,7 @@
   with_items: "{{ postgresql_objects_databases }}"
   when: item.state is defined and item.state == 'absent'
 
-- name: Create and drop users
+- name: "Create and drop users"
   postgresql_user:
     name: "{{ item.name }}"
     password: "{{ item.password | default(omit) }}"
@@ -49,8 +49,10 @@
     login_password: "{{ postgresql_objects_login_password | default(omit) }}"
     port: "{{ postgresql_objects_port | default(omit) }}"
   with_items: "{{ postgresql_objects_users }}"
+  become: yes
+  become_user: postgres
 
-- name: Create groups
+- name: "Create groups"
   postgresql_user:
     name: "{{ item.name }}"
     password: "{{ item.password | default(omit) }}"
@@ -63,7 +65,7 @@
   with_items: "{{ postgresql_objects_groups }}"
   when: item.state is not defined or (item.state is defined and item.state == 'present')
 
-- name: Add or remove users from groups
+- name: "Add or remove users from groups"
   shell: >
     echo {{ 'REVOKE' if item.1.state is defined and item.1.state == 'absent' else 'GRANT' }} {{ item.0.name | quote }}
       {{ 'FROM' if item.1.state is defined and item.1.state == 'absent' else 'TO' }} {{ item.1.name | quote }} |
@@ -77,7 +79,7 @@
     - "{{ postgresql_objects_groups }}"
     - users
 
-- name: Drop groups
+- name: "Drop groups"
   postgresql_user:
     name: "{{ item.name }}"
     state: "{{ item.state }}"
@@ -88,7 +90,7 @@
   with_items: "{{ postgresql_objects_groups }}"
   when: item.state is defined and item.state == 'absent'
 
-- name: Create databases
+- name: "Create databases"
   postgresql_db:
     name: "{{ item.name }}"
     owner: "{{ item.owner | default(omit) }}"
@@ -103,8 +105,10 @@
     port: "{{ postgresql_objects_port | default(omit) }}"
   with_items: "{{ postgresql_objects_databases }}"
   when: item.state is not defined or (item.state is defined and item.state == 'present')
+  become: yes
+  become_user: postgres
 
-- name: Grant user database privileges
+- name: "Grant user database privileges"
   postgresql_user:
     name: "{{ item.name }}"
     db: "{{ item.db }}"
@@ -116,7 +120,7 @@
   with_items: "{{ postgresql_objects_users }}"
   when: item.db is defined and item.priv is defined and not (item.state is defined and item.state == 'absent')
 
-- name: Grant extra privileges
+- name: "Grant extra privileges"
   postgresql_privs:
     database: "{{ item.database | default(omit) }}"
     roles: "{{ item.roles }}"
